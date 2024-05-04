@@ -21,7 +21,7 @@ pub struct PageInner {
     pub(crate) config_helper: Option<cosmic_config::Config>,
     pub(crate) panel_config: Option<CosmicPanelConfig>,
     pub outputs: Vec<String>,
-    pub anchors: Vec<String>,
+    pub anchors: [(Anchor, String); 4],
     pub backgrounds: Vec<String>,
     pub(crate) container_config: Option<CosmicPanelContainerConfig>,
     // TODO move these into panel config
@@ -36,11 +36,11 @@ impl Default for PageInner {
             config_helper: Option::default(),
             panel_config: Option::default(),
             outputs: vec![fl!("all")],
-            anchors: vec![
-                Anchor(PanelAnchor::Left).to_string(),
-                Anchor(PanelAnchor::Right).to_string(),
-                Anchor(PanelAnchor::Top).to_string(),
-                Anchor(PanelAnchor::Bottom).to_string(),
+            anchors: [
+                Anchor(PanelAnchor::Left),
+                Anchor(PanelAnchor::Right),
+                Anchor(PanelAnchor::Top),
+                Anchor(PanelAnchor::Bottom),
             ],
             backgrounds: vec![
                 Appearance::Match.to_string(),
@@ -118,7 +118,7 @@ pub(crate) fn behavior_and_position<
                     dropdown(
                         page.anchors.as_slice(),
                         Some(panel_config.anchor as usize),
-                        Message::PanelAnchor,
+                        |i| Message::PanelAnchor(page.anchors[i]),
                     ),
                 ))
                 .add(settings::item(
@@ -330,6 +330,12 @@ impl ToString for Anchor {
     }
 }
 
+impl AsRef<str> for Anchor {
+    fn as_ref(&self) -> &str {
+        self.to_string()
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Appearance {
     Match,
@@ -373,7 +379,7 @@ impl From<Appearance> for CosmicPanelBackground {
 pub enum Message {
     // panel messages
     AutoHidePanel(bool),
-    PanelAnchor(usize),
+    PanelAnchor(Anchor),
     Output(usize),
     AnchorGap(bool),
     PanelSize(PanelSize),
@@ -445,18 +451,8 @@ impl PageInner {
                     panel_config.autohide = None;
                 }
             }
-            Message::PanelAnchor(i) => {
-                if let Some(anchor) = [
-                    PanelAnchor::Left,
-                    PanelAnchor::Right,
-                    PanelAnchor::Top,
-                    PanelAnchor::Bottom,
-                ]
-                .iter()
-                .find(|a| a.to_string() == self.anchors[i])
-                {
-                    panel_config.anchor = *anchor;
-                }
+            Message::PanelAnchor(a) => {
+                panel_config.anchor = a.0;
             }
             Message::Output(i) => {
                 if i == 0 {
